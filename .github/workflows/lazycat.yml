@@ -1,0 +1,213 @@
+name: lazycat
+
+# 上游 dsh 每次发版 → 自动重建运行时镜像 → 中转进懒猫官方源 → 出 LPK → 发 Release。
+#
+# 为什么是自建 workflow 而不是 ca-x/lazycat-github-action：
+#   dsh 官方不发容器镜像，运行时镜像必须我们自己构建（node + npm 全局 dsh +
+#   预装插件市场），而 Action 的镜像模式只覆盖「上游已有镜像，搬运地址」。
+#   出包本身（lzc-cli project release）不需要任何凭据，所以这里只保留中转运镜
+#   与（可选的）提审所需的 LZC 令牌。
+on:
+  schedule:
+    # 每天一次；上游 dsh 是预发布节奏，够用且不至于刷太勤
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+    inputs:
+      dsh_version:
+        description: '目标 dsh 版本（留空 = 跟随 DSH_DIST_TAG）'
+        required: false
+      force:
+        description: '该版本已发过也重建一次'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lazycat
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: 解析上游版本
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.resolve.outputs.changed }}
+      dsh_version: ${{ steps.resolve.outputs.dsh_version }}
+      market_version: ${{ steps.resolve.outputs.market_version }}
+      lpk_version: ${{ steps.resolve.outputs.lpk_version }}
+      reason: ${{ steps.resolve.outputs.reason }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - id: resolve
+        env:
+          # 跟随哪个 dist-tag：latest 稳定线；next 是 dsh 的预发布线。
+          # 仓库变量 DSH_DIST_TAG 可覆盖，不必改代码。
+          DSH_DIST_TAG: ${{ vars.DSH_DIST_TAG || 'latest' }}
+          DSH_VERSION_OVERRIDE: ${{ inputs.dsh_version }}
+          FORCE: ${{ inputs.force }}
+        run: node pkgscript/upstream.mjs
+      - name: 结论
+        env:
+          CHANGED: ${{ steps.resolve.outputs.changed }}
+          DSH: ${{ steps.resolve.outputs.dsh_version }}
+          MARKET: ${{ steps.resolve.outputs.market_version }}
+          LPK: ${{ steps.resolve.outputs.lpk_version }}
+          REASON: ${{ steps.resolve.outputs.reason }}
+        run: |
+          echo "是否发版：${CHANGED}"
+          echo "上游 dsh：${DSH}"
+          echo "插件市场：${MARKET}"
+          echo "LPK 版本：${LPK}"
+          echo "${REASON}"
+
+  publish:
+    name: 构建镜像并出包
+    needs: resolve
+    if: needs.resolve.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 发布后要把版本改写提交回 main，需要可写令牌
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 构建并推送运行时镜像
+        id: image
+        env:
+          DSH_VERSION: ${{ needs.resolve.outputs.dsh_version }}
+          MARKET_VERSION: ${{ needs.resolve.outputs.market_version }}
+        run: |
+          set -euo pipefail
+          # ttl.sh：匿名可推的公共中转站，24h 过期，正好够 copy-image 取一次；
+          # 名称按版本固定，便于两个 run 撞车时一眼看出是谁。
+          SAFE=$(printf '%s' "${DSH_VERSION}" | tr -c 'a-zA-Z0-9._-' '-')
+          IMG="ttl.sh/dsh-runtime-${SAFE}-${{ github.run_id }}:24h"
+          echo "镜像：$IMG"
+          docker buildx build \
+            --platform linux/amd64 \
+            --build-arg "DSH_VERSION=${DSH_VERSION}" \
+            --build-arg "DSMARKET_VERSION=${MARKET_VERSION}" \
+            --build-arg "BASE_IMAGE=${BASE_IMAGE:-node:24.21.0-bookworm}" \
+            --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            -t "$IMG" \
+            --push \
+            image
+          echo "pushed=$IMG" >> "$GITHUB_OUTPUT"
+
+      - name: 中转进懒猫官方源
+        id: copy
+        env:
+          LZC_API_TOKEN: ${{ secrets.LZC_API_TOKEN }}
+          LZC_BOX_CONFIG_JSON: ${{ secrets.LZC_BOX_CONFIG_JSON }}
+          PUSHED_IMAGE: ${{ steps.image.outputs.pushed }}
+          LZC_CLI_VERSION: '2.0.9'
+        run: |
+          set -euo pipefail
+          if [ -z "${LZC_API_TOKEN}${LZC_BOX_CONFIG_JSON}" ]; then
+            echo "缺少 LZC_API_TOKEN / LZC_BOX_CONFIG_JSON，无法中转镜像（官方商店只接受中转镜像）" >&2
+            exit 1
+          fi
+          npm install -g "@lazycatcloud/lzc-cli@${LZC_CLI_VERSION}" >/dev/null
+          mkdir -p "$HOME/.config/lazycat"
+          if [ -n "${LZC_BOX_CONFIG_JSON}" ]; then
+            printf '%s' "${LZC_BOX_CONFIG_JSON}" > "$HOME/.config/lazycat/box-config.json"
+          else
+            printf '{"token":"%s"}' "${LZC_API_TOKEN}" > "$HOME/.config/lazycat/box-config.json"
+          fi
+          chmod 600 "$HOME/.config/lazycat/box-config.json"
+
+          lzc-cli appstore copy-image "${PUSHED_IMAGE}" --arch amd64 2>&1 | tee /tmp/copy-image.log
+          TARGET=$(grep -oE 'registry\.lazycat\.cloud/[A-Za-z0-9._/-]+:[A-Za-z0-9._-]+' /tmp/copy-image.log | tail -1)
+          if [ -z "${TARGET}" ]; then
+            echo "没有从中转日志里解析出 registry.lazycat.cloud 地址" >&2
+            exit 1
+          fi
+          echo "中转完成：${TARGET}"
+          echo "target=${TARGET}" >> "$GITHUB_OUTPUT"
+
+      - name: 改写清单与版本号
+        env:
+          DSH_VERSION: ${{ needs.resolve.outputs.dsh_version }}
+          MARKET_VERSION: ${{ needs.resolve.outputs.market_version }}
+          LPK_VERSION: ${{ needs.resolve.outputs.lpk_version }}
+          IMAGE: ${{ steps.copy.outputs.target }}
+        run: node pkgscript/apply-release.mjs
+
+      - name: 出包
+        env:
+          LPK_VERSION: ${{ needs.resolve.outputs.lpk_version }}
+        run: |
+          set -euo pipefail
+          # pkgout 目录必须事先存在，lzc-cli 不会创建
+          mkdir -p dist
+          lzc-cli project release
+          LPK=$(find dist -maxdepth 1 -name '*.lpk' | head -1)
+          [ -n "${LPK}" ] || { echo "dist/ 下没有 .lpk" >&2; exit 1; }
+          echo "LPK=$LPK" >> "$GITHUB_ENV"
+          lzc-cli lpk info "${LPK}"
+          sha256sum "${LPK}" > dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
+
+      - name: 发 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.resolve.outputs.lpk_version }}
+          name: v${{ needs.resolve.outputs.lpk_version }}（dsh ${{ needs.resolve.outputs.dsh_version }}）
+          body: |
+            dsh `${{ needs.resolve.outputs.dsh_version }}`，内置插件市场 dshmarket `${{ needs.resolve.outputs.market_version }}`。
+
+            - 镜像：`${{ steps.copy.outputs.target }}`
+            - LPK：`dsh-${{ needs.resolve.outputs.lpk_version }}.lpk`
+            - 解析依据：${{ needs.resolve.outputs.reason }}
+          files: |
+            dist/*.lpk
+            dist/SHA256SUMS.txt
+
+      - name: 归档产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: lpk-${{ needs.resolve.outputs.lpk_version }}
+          path: |
+            dist/*.lpk
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: 版本改写提交回 main
+        env:
+          LPK_VERSION: ${{ needs.resolve.outputs.lpk_version }}
+          DSH_VERSION: ${{ needs.resolve.outputs.dsh_version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git config user.name 'lazycat-bot'
+          git config user.email 'lazycat-bot@users.noreply.github.com'
+          git add dsh.version package.yml lzc-manifest.yml CHANGELOG.md image/profile-template/profiles/web/package.json
+          if git diff --cached --quiet; then
+            echo "没有需要提交的改动"
+            exit 0
+          fi
+          git commit -m "chore: 发布 ${LPK_VERSION}（dsh ${DSH_VERSION}）"
+          git push origin "HEAD:${DEFAULT_BRANCH}"
+
+      - name: 提交商店审核
+        if: vars.SUBMIT_REVIEW == 'true'
+        env:
+          LZC_API_TOKEN: ${{ secrets.LZC_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.config/lazycat"
+          printf '{"token":"%s"}' "${LZC_API_TOKEN}" > "$HOME/.config/lazycat/box-config.json"
+          lzc-cli appstore publish "${LPK}"

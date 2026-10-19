@@ -1,0 +1,12 @@
+# 构建产物
+dist/
+dist-lpk/
+*.lpk
+
+# 本地镜像构建上下文
+image/profile-template/profiles/web/node_modules/
+image/profile-template/profiles/web/package-lock.json
+
+# 杂项
+.DS_Store
+*.log

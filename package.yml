@@ -1,0 +1,40 @@
+package: f00700f.deepseek-harness
+version: 1.1.2
+name: DeepSeek Harness
+description: Everything is a Plugin. DeepSeek 开源的 AI Agent 开发与运行框架（dsh），内置 Web UI，一切皆插件。
+author: DeepSeek AI
+license: MIT
+homepage: https://github.com/deepseek-ai/deepseek-harness
+locales:
+  zh-CN:
+    name: DeepSeek Harness
+    description: DeepSeek 开源的 AI Agent 开发与运行框架（dsh），基于 Cordis 插件架构，内置 Web UI，一切皆插件。
+    usage: |
+      DeepSeek Harness (dsh) 是 DeepSeek 开源的 AI Agent 开发与运行框架，内置 Web UI，一切皆插件。
+
+      首次使用：
+      1. 打开应用后进入 Web UI（已内置免登录，无需手动输入 token）
+      2. 在 Settings → Models 中填入 DeepSeek API Key（或其他兼容模型的 Key）并保存
+      3. 选择工作目录后即可与 Agent 对话、执行任务
+
+      内置插件市场：
+      - 已预装 dshmarket 插件市场，进入 Settings → Plugin Market 即可浏览和安装插件
+      - 插件市场缩略图通过应用内代理加载，无需额外网络配置
+
+      说明：
+      - 数据保存在 /lzcapp/var 下，升级/重启不会丢失
+      - 模型 Key 在应用内配置
+  en-US:
+    name: DeepSeek Harness
+    description: DeepSeek Harness (dsh) — an open-source agent harness with everything-is-a-plugin architecture and a built-in Web UI.
+    usage: |-
+      DeepSeek Harness (dsh) is an open-source AI Agent framework with built-in Web UI.
+      First steps:
+      1. Open the Web UI (automatic sign-in enabled).
+      2. In Settings -> Models, enter your DeepSeek API Key.
+      3. Select a workspace and start collaborating.
+permissions:
+  required:
+    - net.internet
+  optional:
+    - document.private
