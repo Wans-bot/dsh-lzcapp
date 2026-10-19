@@ -75,4 +75,30 @@ pkgscript/               CI 用的两个脚本
 1. **`dshmarket` 的 peer 范围必须接受本次 dsh**。范围不匹配时 dsh 会静默跳过 bundle，
    插件市场整页消失（0.1.x → 0.2.x 踩过一次）。`upstream.mjs` 就是为这件事写的。
 2. **subdomain 不能改**。`lzc-manifest.yml` 里 `application.subdomain: dsh` 决定持久化
+2. **subdomain 不能改**。`lzc-manifest.yml` 里 `application.subdomain: dsh` 决定持久化
    卷的挂载路径，改了等于把用户的会话、设置、插件和 API Key 全部变成孤儿数据。
+3. **`latest` dist-tag 会倒退**。2026-10-19 就发生过：`latest` 从 `0.2.1-rc.2` 翻回
+   `0.2.0-rc.2`，一次自动派发把线上版本降了级。`upstream.mjs` 现在有硬闸：目标版本
+   低于仓库已记录的 `dsh.version` 一律拒绝，真要降级得显式 `ALLOW_DOWNGRADE=true`；
+   手动钉 `dsh_version` 时不受此限。
+4. **补丁失败不许杀容器**。`content/entry.sh` 里两个 patch 都是 `run_patch` 包裹的：
+   上游布局一变，最坏结果是「设置不再持久化」，而不是应用起不来（1.1.5 就是被
+   `set -e` + patch 抛错搞成 Exited 的）。
+5. **`copy-image` 进官方源不等于永久留存**。没被商店审核引用过的镜像过一阵会
+   `MANIFEST_UNKNOWN`，所以验证一定要在镜像还新鲜时做，且线上版本要走提审。
+6. **装完必须看容器**。`lpk-manager install` 返回成功只代表登记成功；容器可能
+   Exit 后被引擎回收，`lpk-manager info` 会显示 `status: 6`。发布后请跑
+   `dsh-sync.sh`（见下）而不是只看 install 的退出码。
+
+## 发布后同步到盒子并验收
+
+`/root/dsh-sync.sh`（在盒子上）会按 Release 标签下载 LPK、安装、等容器起来、再跑
+`/root/dsh-verify.sh` 做指纹验收：
+
+```bash
+ssh root@lzcbox 'bash /root/dsh-sync.sh v1.1.6 0.2.1-rc.2'
+```
+
+验收项覆盖：包已登记、容器在跑、镜像来自 `registry.lazycat.cloud`、容器内
+`dsh --version` 等于期望值、`dshmarket` 已随包、免登录代理（首访 303 下发 cookie、
+带 cookie 返回真实首页）、Settings 持久化补丁已落地。
