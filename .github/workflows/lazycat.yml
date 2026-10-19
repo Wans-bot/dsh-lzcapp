@@ -217,12 +217,32 @@ jobs:
           echo "六次重试仍无法推送到 ${DEFAULT_BRANCH}：Release 已发布，请人工把版本号对齐" >&2
           exit 1
 
+      # 提审：开发者中心三段式 COS 直传 + 建审核单（pkgscript/submit-review.mjs）。
+      # 官方对 review/create 的硬要求：PC 截图 ≥3 张、声明支持移动端则移动截图 ≥3 张，
+      # 所以截图放在仓库 screenshots/ 下随包一起走，不在 CI 里现抓。
+      # 默认关闭：仓库变量 SUBMIT_REVIEW=true 才真提审（避免每次出包都建审核单）。
       - name: 提交商店审核
         if: vars.SUBMIT_REVIEW == 'true'
         env:
-          LZC_API_TOKEN: ${{ secrets.LZC_API_TOKEN }}
+          LZC_USER_TOKEN: ${{ secrets.LZC_API_TOKEN }}
+          LPK_VERSION: ${{ needs.resolve.outputs.lpk_version }}
+          DSH_VERSION: ${{ needs.resolve.outputs.dsh_version }}
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/.config/lazycat"
-          printf '{"token":"%s"}' "${LZC_API_TOKEN}" > "$HOME/.config/lazycat/box-config.json"
-          lzc-cli appstore publish "${LPK}"
+          LPK=$(ls dist/*.lpk | head -1)
+          echo "提审 $LPK（LPK $LPK_VERSION / dsh $DSH_VERSION）"
+          node pkgscript/submit-review.mjs \
+            --lpk "$LPK" \
+            --package f00700f.deepseek-harness \
+            --version "$LPK_VERSION" \
+            --name-zh "DeepSeek Harness" \
+            --name-en "DeepSeek Harness" \
+            --brief-zh "DeepSeek 开源的 AI Agent 框架，内置 Web UI，一切皆插件" \
+            --desc-zh "DeepSeek Harness (dsh) 是 DeepSeek 开源的 AI Agent 开发与运行框架，基于 Cordis 插件架构，内置 Web UI 与可视化插件市场（dshmarket）。支持子代理、技能、工作区、多模型接入；数据保存在应用目录内，升级不丢。" \
+            --keywords-zh "AI,Agent,DeepSeek,插件,工作流" \
+            --source "https://github.com/deepseek-ai/deepseek-harness" \
+            --author "DeepSeek AI" \
+            --shots-pc screenshots/pc-1-home.png screenshots/pc-2-plugins.png screenshots/pc-3-market.png \
+            --shots-mobile screenshots/mobile-1-home.png screenshots/mobile-2-plugins.png screenshots/mobile-3-market.png \
+            --support-mobile \
+            --changelog-zh "升级 dsh 到 ${DSH_VERSION}；应用图标更新为 DeepSeek 鲸鱼标识"
