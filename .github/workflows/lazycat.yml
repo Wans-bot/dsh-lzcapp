@@ -201,18 +201,20 @@ jobs:
             exit 0
           fi
           git commit -m "chore: 发布 ${LPK_VERSION}（dsh ${DSH_VERSION}）"
-          # 并发保护：发布期间 main 可能被另一次运行或人工提交推进，直接 push 会
-          # 非快进被拒，结果是 Release 发了而 main 停在旧版本。rebase 后重试。
-          for attempt in 1 2 3; do
+          # 并发保护：发布期间 main 可能被另一次运行或人工提交推进（今天就是并行推
+          # 文档把 1.1.7 的回写挤掉了）。每次失败都显式 fetch+rebase 再推，退避
+          # 拉长到 10s，给并发的另一侧留出落地时间。
+          for attempt in 1 2 3 4 5 6; do
             if git push origin "HEAD:${DEFAULT_BRANCH}"; then
               echo "已提交回 ${DEFAULT_BRANCH}"
               exit 0
             fi
-            echo "推送被拒（第 ${attempt}/3 次），rebase 到远端后重试" >&2
-            git pull --rebase --autostash origin "${DEFAULT_BRANCH}"
-            sleep 5
+            echo "推送被拒（第 ${attempt}/6 次），拉取远端后重试" >&2
+            sleep $((attempt * 10))
+            git fetch --prune origin "${DEFAULT_BRANCH}"
+            git rebase "origin/${DEFAULT_BRANCH}"
           done
-          echo "三次重试仍无法推送到 ${DEFAULT_BRANCH}" >&2
+          echo "六次重试仍无法推送到 ${DEFAULT_BRANCH}：Release 已发布，请人工把版本号对齐" >&2
           exit 1
 
       - name: 提交商店审核

@@ -1,3 +1,13 @@
+# 变更记录
+
+## 1.1.7（2026-10-19）
+
+- dsh `0.2.1-rc.2`（镜像 `registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39212123817:2c60bb6a4a5a9810`）
+- 回写 main 的重试从 3 次 / 5s 退避提升到 6 次 / 递增退避，并在每次重试前显式
+  `git fetch` + `git rebase`：1.1.6 那次就是因为并行提交把回写挤掉，Release 发了
+  而 main 停在旧版本
+- 无功能变更（承 1.1.6 的补丁降级与降级护栏）
+
 ## 1.1.6（2026-10-19）
 
 - dsh `0.2.1-rc.2`（镜像 `registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39210816097:038aba157bb12acd`）
@@ -7,8 +17,6 @@
   防止 dist-tag 倒退把线上版本降级
 - 发布提交回 main 改为 rebase 重试，避免与并发提交撞车
 - 从这一版起走 GitHub Actions 自动发布（`Wans-bot/dsh-lzcapp`）
-
-# 变更记录
 
 ## 1.1.5（2026-10-19）
 
