@@ -21,7 +21,13 @@ dsh 官方只发 npm 包，不发容器镜像；官方商店只接受 `registry.
 | 改写 | `pkgscript/apply-release.mjs` 一次性改 `dsh.version`、`package.yml`、`lzc-manifest.yml`、web profile 的 `dshmarket`、`CHANGELOG.md` |
 | 出包 | `lzc-cli project release` → `dist/*.lpk`（出包本身不需要任何凭据） |
 | 发布 | GitHub Release 挂 LPK + SHA256，并把版本改写提交回 `main` |
-| 提审（可选） | 仓库变量 `SUBMIT_REVIEW=true` 时调 `lzc-cli appstore publish` |
+| 提审（可选） | 仓库变量 `SUBMIT_REVIEW=true` 时走 `pkgscript/submit-review.mjs`：三段式 COS 直传（LPK + 截图）→ `review/create` 建审核单；截图来自仓库 `screenshots/`（PC 3 张 1920×1080、移动 3 张 1080×1920，官方硬性下限） |
+
+## 商店现状
+
+- 在架基线 `v1.1.3`（#19726 已通过）；当前在审 **#20833 / v1.1.8**（2026-10-19 提交，待审）。
+- 应用图标 = DeepSeek 鲸鱼原图（`icon.png`，9634 B，sha256 `407db6f4e288…`），已核验打进 LPK 并装到 `lzcbox`。
+- `v1.1.8` 的运行时：dsh `0.2.1-rc.2` + node `v24.22.0`，容器内 `curl 127.0.0.1:3080/` 返回 303（鉴权代理重定向，正常）。
 
 ## 需要配置的东西
 
