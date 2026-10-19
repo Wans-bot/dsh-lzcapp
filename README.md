@@ -92,8 +92,8 @@ pkgscript/               CI 用的两个脚本
 
 ## 发布后同步到盒子并验收
 
-`/root/dsh-sync.sh`（在盒子上）会按 Release 标签下载 LPK、安装、等容器起来、再跑
-`/root/dsh-verify.sh` 做指纹验收：
+仓库里的 `tools/dsh-sync.sh` 与 `tools/dsh-verify.sh` 会按 Release 标签下载 LPK、安装、
+等容器起来、再做指纹验收（两个脚本都已在盒子 `/root/` 下各放一份）：
 
 ```bash
 ssh root@lzcbox 'bash /root/dsh-sync.sh v1.1.6 0.2.1-rc.2'
