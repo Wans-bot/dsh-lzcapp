@@ -82,15 +82,6 @@ application:
               fileSystemAccess: true
               fileInput: true
               downloadAnchor: true
-    # 窄屏（<=640px）适配补丁：侧栏改浮层、安全区、自动收起。
-    # 桌面宽度下所有规则不生效，保持上游原样。
-    - id: dsh-mobile
-      'on': browser
-      when:
-        - /*
-      do:
-        - src: >-
-            file:///lzcapp/pkg/content/lazycat-injects/dsh-mobile.js
 services:
   dsh:
     image: registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39230210656:468e515f36a8e257
