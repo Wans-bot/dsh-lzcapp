@@ -1,5 +1,19 @@
 # 变更记录
 
+## 1.1.5（2026-10-19）
+
+- 修 1.1.4 的路径错误：dsh 的 UI 插件是**嵌套依赖**（`<dsh>/node_modules/@deepseek-ai/…`），
+  补丁改为扫描该目录下所有 `dsh-client-ui-settings*` 包，不再硬编码单一路径
+- 其余同 1.1.4（dsh `0.2.1-rc.2`、dshmarket `1.66.42`）
+
+## 1.1.4（2026-10-19）
+
+- dsh `0.2.1-rc.2`（镜像 `registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39206298788:e4eebfa16a294298`）
+- 修 0.2.1-rc.2 启动即崩：设置持久化补丁跟随上游改版（选择器从 `dsh-client-ui-settings` 挪到
+  `dsh-client-ui-settings-general`，形态从 `? "host" : "memory"` 变为 `? new SettingsDocumentStore(...) : void 0`），
+  现在同时兼容两种形态；找不到选择器时仍按失败关闭处理
+- 内置插件市场 dshmarket `1.66.42`
+
 ## 1.1.3（2026-10-19）
 
 - dsh `0.2.1-rc.2`
