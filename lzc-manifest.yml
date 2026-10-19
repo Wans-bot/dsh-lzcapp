@@ -84,7 +84,7 @@ application:
               downloadAnchor: true
 services:
   dsh:
-    image: registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39230210656:468e515f36a8e257
+    image: registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39233895895:6dbc50912f6da641
     # Persistent state lives on /lzcapp/var (survives upgrades/restarts).
     # /data holds profiles (plugins), sessions, settings and the workspace.
     binds:
