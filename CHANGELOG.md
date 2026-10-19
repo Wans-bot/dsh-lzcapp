@@ -1,9 +1,14 @@
+## 1.1.6（2026-10-19）
+
+- dsh `0.2.1-rc.2`（镜像 `registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39210816097:038aba157bb12acd`）
+- 补丁失败降级为告警：`entry.sh` 的两个 patch 用 `run_patch` 包裹，上游布局变动时
+  最坏是「设置不再持久化」，不再让容器 Exited
+- `upstream.mjs` 加回退护栏：目标版本低于仓库已记录的 `dsh.version` 一律拒绝，
+  防止 dist-tag 倒退把线上版本降级
+- 发布提交回 main 改为 rebase 重试，避免与并发提交撞车
+- 从这一版起走 GitHub Actions 自动发布（`Wans-bot/dsh-lzcapp`）
+
 # 变更记录
-
-## 1.1.5（2026-10-19）
-
-- dsh `0.2.0-rc.2`
-- 内置插件市场 dshmarket `1.66.42`
 
 ## 1.1.5（2026-10-19）
 

@@ -201,7 +201,19 @@ jobs:
             exit 0
           fi
           git commit -m "chore: 发布 ${LPK_VERSION}（dsh ${DSH_VERSION}）"
-          git push origin "HEAD:${DEFAULT_BRANCH}"
+          # 并发保护：发布期间 main 可能被另一次运行或人工提交推进，直接 push 会
+          # 非快进被拒，结果是 Release 发了而 main 停在旧版本。rebase 后重试。
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${DEFAULT_BRANCH}"; then
+              echo "已提交回 ${DEFAULT_BRANCH}"
+              exit 0
+            fi
+            echo "推送被拒（第 ${attempt}/3 次），rebase 到远端后重试" >&2
+            git pull --rebase --autostash origin "${DEFAULT_BRANCH}"
+            sleep 5
+          done
+          echo "三次重试仍无法推送到 ${DEFAULT_BRANCH}" >&2
+          exit 1
 
       - name: 提交商店审核
         if: vars.SUBMIT_REVIEW == 'true'
