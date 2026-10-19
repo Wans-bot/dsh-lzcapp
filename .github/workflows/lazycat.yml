@@ -231,6 +231,7 @@ jobs:
           set -euo pipefail
           LPK=$(ls dist/*.lpk | head -1)
           echo "提审 $LPK（LPK $LPK_VERSION / dsh $DSH_VERSION）"
+          # 英文资料是硬门槛（缺参数或含中文 submit-review.mjs 会直接拒绝）
           node pkgscript/submit-review.mjs \
             --lpk "$LPK" \
             --package f00700f.deepseek-harness \
@@ -238,11 +239,15 @@ jobs:
             --name-zh "DeepSeek Harness" \
             --name-en "DeepSeek Harness" \
             --brief-zh "DeepSeek 开源的 AI Agent 框架，内置 Web UI，一切皆插件" \
+            --brief-en "DeepSeek's open-source AI agent framework with a built-in web UI where everything is a plugin" \
             --desc-zh "DeepSeek Harness (dsh) 是 DeepSeek 开源的 AI Agent 开发与运行框架，基于 Cordis 插件架构，内置 Web UI 与可视化插件市场（dshmarket）。支持子代理、技能、工作区、多模型接入；数据保存在应用目录内，升级不丢。" \
+            --desc-en "DeepSeek Harness (dsh) is DeepSeek's open-source framework for building and running AI agents. Built on the Cordis plugin architecture, it ships a web UI and a visual plugin marketplace (dshmarket), and supports sub-agents, skills, workspaces and multiple model providers. All data is stored inside the app directory, so upgrades keep your sessions and settings." \
             --keywords-zh "AI,Agent,DeepSeek,插件,工作流" \
+            --keywords-en "AI,Agent,DeepSeek,plugin,workflow" \
             --source "https://github.com/deepseek-ai/deepseek-harness" \
             --author "DeepSeek AI" \
-            --shots-pc screenshots/pc-1-home.png screenshots/pc-2-plugins.png screenshots/pc-3-market.png \
-            --shots-mobile screenshots/mobile-1-home.png screenshots/mobile-2-plugins.png screenshots/mobile-3-market.png \
+            --shots-pc screenshots/pc-1-home.png screenshots/pc-2-chat.png screenshots/pc-3-market.png \
+            --shots-mobile screenshots/mobile-1-home.png screenshots/mobile-2-chat.png screenshots/mobile-3-market.png \
             --support-mobile \
-            --changelog-zh "升级 dsh 到 ${DSH_VERSION}；应用图标更新为 DeepSeek 鲸鱼标识"
+            --changelog-zh "升级 dsh 到 ${DSH_VERSION}；新增手机竖屏适配（侧栏改浮层、安全区避让），界面与商店资料中文化" \
+            --changelog-en "Upgraded dsh to ${DSH_VERSION}; added phone portrait support (drawer sidebar, safe-area insets) and Chinese store assets"
