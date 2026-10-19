@@ -90,11 +90,18 @@ fi
 if [ -f /lzcapp/pkg/content/dsh-proxy.mjs ]; then
   cp -f /lzcapp/pkg/content/dsh-proxy.mjs /dsh-proxy.mjs
 fi
-node /lzcapp/pkg/content/patch-dsh-settings.js
+# Auto-update posture: an upstream layout change must degrade a convenience
+# patch, never take the app down. Both patches are idempotent and optional.
+run_patch() {
+  if ! node "$1"; then
+    echo "WARN: $1 failed; continuing without it (upstream layout may have changed)" >&2
+  fi
+}
+run_patch /lzcapp/pkg/content/patch-dsh-settings.js
 # The market asks a third-party image resizer for every thumbnail; that host is
 # not reachable from here, so point the previews at the app's own proxy. Runs
 # after the market reconcile above, and is idempotent.
-node /lzcapp/pkg/content/patch-dsh-market-images.js
+run_patch /lzcapp/pkg/content/patch-dsh-market-images.js
 
 # --- 4. run -----------------------------------------------------------------
 exec /entry.sh
