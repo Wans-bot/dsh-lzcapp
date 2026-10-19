@@ -45,5 +45,13 @@ for i in $(seq 1 60); do
 done
 [ "$running" -eq 1 ] || { echo "!! 容器没起来"; lzc-docker ps -a --filter "name=$C" --format '{{.Names}} {{.Status}}'; exit 1; }
 
+# Up 不等于就绪：dsh web 起在 3081、代理 3080 还要等一轮，先等 healthy 再验收。
+echo "=== 等待 healthy（最多 120s）==="
+for i in $(seq 1 40); do
+  s=$(lzc-docker ps --filter "name=$C" --format '{{.Status}}' 2>/dev/null)
+  case "$s" in *healthy*) echo "已就绪: $s"; break;; esac
+  sleep 3
+done
+
 echo "=== 指纹验收 (期望 dsh $DSH_WANT) ==="
 bash /root/dsh-verify.sh "$DSH_WANT"
