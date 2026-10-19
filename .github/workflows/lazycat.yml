@@ -89,6 +89,7 @@ jobs:
         env:
           DSH_VERSION: ${{ needs.resolve.outputs.dsh_version }}
           MARKET_VERSION: ${{ needs.resolve.outputs.market_version }}
+          BASE_IMAGE: ${{ vars.BASE_IMAGE }}
         run: |
           set -euo pipefail
           # ttl.sh：匿名可推的公共中转站，24h 过期，正好够 copy-image 取一次；
@@ -100,7 +101,7 @@ jobs:
             --platform linux/amd64 \
             --build-arg "DSH_VERSION=${DSH_VERSION}" \
             --build-arg "DSMARKET_VERSION=${MARKET_VERSION}" \
-            --build-arg "BASE_IMAGE=${BASE_IMAGE:-node:24.21.0-bookworm}" \
+            --build-arg "BASE_IMAGE=${BASE_IMAGE:-node:24-bookworm}" \
             --label "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             -t "$IMG" \
             --push \
@@ -170,7 +171,7 @@ jobs:
             dsh `${{ needs.resolve.outputs.dsh_version }}`，内置插件市场 dshmarket `${{ needs.resolve.outputs.market_version }}`。
 
             - 镜像：`${{ steps.copy.outputs.target }}`
-            - LPK：`dsh-${{ needs.resolve.outputs.lpk_version }}.lpk`
+            - LPK：`f00700f.deepseek-harness-v${{ needs.resolve.outputs.lpk_version }}.lpk`
             - 解析依据：${{ needs.resolve.outputs.reason }}
           files: |
             dist/*.lpk
