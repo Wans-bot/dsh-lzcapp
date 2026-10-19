@@ -166,6 +166,22 @@ async function main() {
     lpk_version: currentLpk,
     reason: '',
   };
+  // 回退护栏：dist-tag 由上游随手改，实测 latest 会从 0.2.1-rc.2 翻回 0.2.0-rc.2。
+  // 没有这道闸，一次派发就会把线上版本降级，还得再等一轮才能升回来。
+  const recordedSemver = recorded ? parse(recorded) : null;
+  const pinned = Boolean(process.env.DSH_VERSION_OVERRIDE?.trim());
+  if (
+    !pinned &&
+    recordedSemver &&
+    parse(dshVersion) &&
+    compare(dshVersion, recorded) < 0 &&
+    process.env.ALLOW_DOWNGRADE !== 'true'
+  ) {
+    out.reason =
+      `拒绝回退：上游 ${via} 给出 dsh ${dshVersion}，仓库已记录 ${recorded}` +
+      '（确实要降级请设 ALLOW_DOWNGRADE=true）';
+    return report(out);
+  }
 
   if (recorded === dshVersion && process.env.FORCE !== 'true') {
     out.reason = `已是最新：仓库记录 dsh ${recorded || '(空)'} = 上游 ${dshVersion}（${via}）`;
