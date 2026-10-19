@@ -93,7 +93,7 @@ application:
             file:///lzcapp/pkg/content/lazycat-injects/dsh-mobile.js
 services:
   dsh:
-    image: registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39219992545:9eaf1ccc09dd1ea9
+    image: registry.lazycat.cloud/wans/dsh-runtime-0.2.1-rc.2-39230210656:468e515f36a8e257
     # Persistent state lives on /lzcapp/var (survives upgrades/restarts).
     # /data holds profiles (plugins), sessions, settings and the workspace.
     binds:

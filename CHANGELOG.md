@@ -1,5 +1,10 @@
 # 变更记录
 
+## 1.1.10（2026-10-19）
+
+- dsh `0.2.1-rc.2`
+- 内置插件市场 dshmarket `1.66.42`
+
 ## 1.1.9（2026-10-19）
 
 - 新增窄屏（≤640px）适配补丁 `content/lazycat-injects/dsh-mobile.js`：上游 Web UI 是
