@@ -76,11 +76,10 @@ pkgscript/               CI 用的两个脚本
   apply-release.mjs      按上面结论改写仓库文件（确定性，不联网）
 ```
 
-## 两个易踩的坑
+## 几个易踩的坑
 
 1. **`dshmarket` 的 peer 范围必须接受本次 dsh**。范围不匹配时 dsh 会静默跳过 bundle，
    插件市场整页消失（0.1.x → 0.2.x 踩过一次）。`upstream.mjs` 就是为这件事写的。
-2. **subdomain 不能改**。`lzc-manifest.yml` 里 `application.subdomain: dsh` 决定持久化
 2. **subdomain 不能改**。`lzc-manifest.yml` 里 `application.subdomain: dsh` 决定持久化
    卷的挂载路径，改了等于把用户的会话、设置、插件和 API Key 全部变成孤儿数据。
 3. **`latest` dist-tag 会倒退**。2026-10-19 就发生过：`latest` 从 `0.2.1-rc.2` 翻回
@@ -95,6 +94,29 @@ pkgscript/               CI 用的两个脚本
 6. **装完必须看容器**。`lpk-manager install` 返回成功只代表登记成功；容器可能
    Exit 后被引擎回收，`lpk-manager info` 会显示 `status: 6`。发布后请跑
    `dsh-sync.sh`（见下）而不是只看 install 的退出码。
+
+## 窄屏（手机）适配
+
+上游 dsh 的 Web UI 是桌面优先的。实测 360px 宽的手机竖屏下，侧边栏一展开就把对话列
+从 334px 压到 **80px**（网格第一列被 JS 改成 280px），每行只剩三四个字。
+
+`content/lazycat-injects/dsh-mobile.js` 通过 `lzc-manifest.yml` 的 `injects` 在浏览器侧
+注入一段 `@media (max-width: 640px)` 样式与少量行为，桌面宽度下完全不影响上游：
+
+| 问题 | 处理 |
+| --- | --- |
+| 侧栏展开挤压对话列 | 侧栏改 `position: fixed` 浮层抽屉，网格第一列恒为 56px（实测对话列回到 334px） |
+| 刘海/小白条遮挡 | `100dvh` + `env(safe-area-inset-*)` 四边避让 |
+| 图标栏点击目标偏小 | 图标栏内按钮 `min-height: 44px` |
+| 挑完会话抽屉不收起 | 点抽屉内条目或点内容区后自动收起（点图标栏本身不收，否则刚打开的面板会立刻关掉） |
+| 下拉触发回弹/刷新 | `overscroll-behavior: none` + 去掉点击高亮 |
+
+已知且未处理的两处上游行为（改它们会牵动 sticky 布局，得不偿失）：
+
+1. 输入区 `composerSeat` 是 `scrollBody` 内部的 `position: sticky; bottom: 0` 浮层，而消息容器
+   在流内是 0 高度，所以正文会从半透明输入框底下透出（玻璃拟态）。给它加 `padding-bottom`
+   反而会把浮层顶到页面中部，已实测放弃。
+2. 消息容器高度塌陷导致滚动到底部的行为不稳，与本次无关。
 
 ## 发布后同步到盒子并验收
 
