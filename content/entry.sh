@@ -12,16 +12,73 @@ DSH_HOME_DIR="${DSH_HOME:-/data}"
 TPL=/opt/dsh-profile-template/profiles
 WEBPROF="$DSH_HOME_DIR/profiles/web"
 MARKET_DIR="$WEBPROF/node_modules/dshmarket"
-DOCS_DIR="${DSH_DOCUMENTS_DIR:-$DSH_HOME_DIR/documents}"
+LEGACY_DOCS="$DSH_HOME_DIR/documents"
+APP_DOCUMENTS_ROOT=/lzcapp/documents
+DOCUMENT_ROOT=/lzcapp/document
+APP_PACKAGE="${LAZYCAT_APP_ID:-f00700f.deepseek-harness}"
+DOCS_DIR="${DSH_DOCUMENTS_DIR:-}"
 
-# --- 1. Documents directory for first-use Workspace creation ---------------
+# --- 1. Documents directory -> 网盘「应用文稿」 --------------------------------
+# 审核单 #20857 驳回原文：「更新后工作区文件丢失，需要对工作区文件进行持久化储存，
+# 储存到网盘应用文稿内」。dsh 把首个工作区建在 <Documents>/deepseek-harness/
+# default-workspace，所以 Documents 指向哪里，工作区就落在哪里。
+#
+# 有了 document.private，平台会挂两块网盘存储进来（都不需要自己 bind）：
+#   /lzcapp/documents/<用户>               本应用的「应用文稿」，就是文件管理器里
+#                                          那个应用文稿目录（指向 …/.apps/<包ID>）
+#   /lzcapp/document/<用户>/               整个网盘主目录（桌面/下载/图片…），
+#                                          应用文稿在其中的 .apps/<包ID>/ 下
+# 应用文稿带备份、跟着还原走、卸载默认不删，正是审核要求的持久化位置（盒子上的
+# sqmusic / photo / lzcwrt 等应用也都把数据写在这里）。相比之下 /root、/tmp 和
+# 镜像层每次更新都会重建；/data（= /lzcapp/var）只是应用私有卷。两块都没挂
+# （用户没授权 document.private）时回退到私有卷，绝不让容器起不来。
+if [ -z "$DOCS_DIR" ]; then
+  for app_home in "$APP_DOCUMENTS_ROOT"/*; do
+    [ -d "$app_home" ] || continue
+    DOCS_DIR="$app_home"
+    break
+  done
+fi
+if [ -z "$DOCS_DIR" ]; then
+  for user_home in "$DOCUMENT_ROOT"/*; do
+    [ -d "$user_home/.apps" ] || continue
+    DOCS_DIR="$user_home/.apps/$APP_PACKAGE"
+    break
+  done
+fi
+if [ -n "$DOCS_DIR" ] && mkdir -p "$DOCS_DIR" 2>/dev/null && [ -w "$DOCS_DIR" ]; then
+  :
+else
+  if [ -n "$DOCS_DIR" ]; then
+    echo "WARN: cannot use app documents at $DOCS_DIR" >&2
+  fi
+  echo "WARN: netdisk app documents not mounted; workspace stays on $LEGACY_DOCS" >&2
+  DOCS_DIR="$LEGACY_DOCS"
+  mkdir -p "$DOCS_DIR"
+fi
+
+# dsh 把工作区位置以绝对路径存进设置，<=1.1.12 存的是 $LEGACY_DOCS/...；把旧路径
+# 变成指向应用文稿的软链，升级上来的用户原来那个工作区照样能打开，文件也就跟着进了
+# 网盘。首次迁移先把老目录内容拷进去（拷贝失败就保留原目录、不强上软链）。
+if [ "$DOCS_DIR" != "$LEGACY_DOCS" ]; then
+  if [ -d "$LEGACY_DOCS" ] && [ ! -L "$LEGACY_DOCS" ]; then
+    echo "migrating $LEGACY_DOCS -> $DOCS_DIR"
+    if cp -a "$LEGACY_DOCS/." "$DOCS_DIR/" 2>/dev/null; then
+      rm -rf "$LEGACY_DOCS"
+    else
+      echo "WARN: migration copy failed; keeping $LEGACY_DOCS as-is" >&2
+    fi
+  fi
+  [ -e "$LEGACY_DOCS" ] || ln -sfn "$DOCS_DIR" "$LEGACY_DOCS"
+fi
+echo "workspace documents: $DOCS_DIR"
+
 # dsh 0.2 resolves <Documents>/deepseek-harness/default-workspace through
 # `xdg-user-dir DOCUMENTS`; the Debian base image has no xdg-user-dirs, so the
 # first page load reports "Unable to create default workspace" and the empty
-# state never seeds. The OS directory is also the wrong answer here: it lives
-# outside /lzcapp/var and would not survive an app upgrade. Answer with a path
-# on the persistent volume instead, and never shadow a real xdg-user-dir.
-mkdir -p "$DOCS_DIR" /usr/local/bin
+# state never seeds. Answer with the app-documents path above, and never shadow
+# a real xdg-user-dir.
+mkdir -p /usr/local/bin
 EXISTING_XDG=$(command -v xdg-user-dir || true)
 if [ -z "$EXISTING_XDG" ] || [ "$EXISTING_XDG" = /usr/local/bin/xdg-user-dir ]; then
   cat > /usr/local/bin/xdg-user-dir <<SHIM

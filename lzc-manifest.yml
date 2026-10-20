@@ -10,9 +10,12 @@ usage: |
   - 已预装 dshmarket 插件市场，进入 Settings → Plugin Market 即可浏览和安装插件
   - 插件市场缩略图通过应用内代理加载，无需额外网络配置
 
+  工作区与文件：
+  - 默认工作区在「网盘 → 应用文稿 → DeepSeek Harness」下，跟着网盘备份走
+  - 更新应用不会重建工作区目录；你自己的文件放在工作区里就不会丢
+
   说明：
-  - 数据保存在 /lzcapp/var 下，升级/重启不会丢失
-  - 模型 Key 在应用内配置
+  - 会话、设置、插件与 API Key 保存在应用私有目录（/lzcapp/var），升级/重启不会丢失
 application:
   # NOTE: subdomain must never change. The app's persistent data lives under the
   # deployment instance derived from it; changing it would move the storage path

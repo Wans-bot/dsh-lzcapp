@@ -1,5 +1,5 @@
 package: f00700f.deepseek-harness
-version: 1.1.12
+version: 1.1.13
 name: DeepSeek Harness
 description: Everything is a Plugin. DeepSeek 开源的 AI Agent 开发与运行框架（dsh），内置 Web UI，一切皆插件。
 author: DeepSeek AI
@@ -21,9 +21,12 @@ locales:
       - 已预装 dshmarket 插件市场，进入 Settings → Plugin Market 即可浏览和安装插件
       - 插件市场缩略图通过应用内代理加载，无需额外网络配置
 
+      工作区与文件：
+      - 默认工作区在「网盘 → 应用文稿 → DeepSeek Harness」下，跟着网盘备份走
+      - 更新应用不会重建工作区目录；你自己的文件放在工作区里就不会丢
+
       说明：
-      - 数据保存在 /lzcapp/var 下，升级/重启不会丢失
-      - 模型 Key 在应用内配置
+      - 会话、设置、插件与 API Key 保存在应用私有目录（/lzcapp/var），升级/重启不会丢失
   en-US:
     name: DeepSeek Harness
     description: DeepSeek Harness (dsh) — an open-source agent harness with everything-is-a-plugin architecture and a built-in Web UI.
@@ -33,8 +36,18 @@ locales:
       1. Open the Web UI (automatic sign-in enabled).
       2. In Settings -> Models, enter your DeepSeek API Key.
       3. Select a workspace and start collaborating.
+
+      Workspaces and files:
+      - The default workspace lives in Netdisk -> App Documents -> DeepSeek Harness and follows your box backups
+      - App updates never recreate the workspace directory, so files you keep there are not lost
+
+      Notes:
+      - Sessions, settings, plugins and API keys are stored in the app's private volume (/lzcapp/var) and survive updates and restarts
 permissions:
   required:
     - net.internet
-  optional:
+    # Workspace persistence (review #20857): the platform mounts
+    # /lzcsys/data/document/<uid>/.apps/<pkg> at /lzcapp/documents/<uid> only
+    # for this permission, and that mount is the netdisk "app documents" dir
+    # that survives updates and follows backups.
     - document.private

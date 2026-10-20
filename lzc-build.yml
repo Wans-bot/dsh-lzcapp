@@ -2,8 +2,8 @@ contentdir: ./content
 icon: icon.png
 pkgout: dist
 # No build step: the runtime glue in ./content is shipped as-is.
-#   entry.sh                 upgrade-safe entrypoint (Documents shim +
-#                            plugin-market reconcile + settings patch)
+#   entry.sh                 upgrade-safe entrypoint (Documents -> netdisk
+#                            app-documents shim + plugin-market reconcile +
 #   dsh-proxy.mjs            auth auto-proxy (loopback dsh -> box app domain)
 #   patch-dsh-settings.js    Settings Host-persistence repair for the app domain
 #   lazycat-injects/         official file-chooser inject (LazyCat drive integration)
