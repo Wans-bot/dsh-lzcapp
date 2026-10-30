@@ -2,7 +2,7 @@
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "dshmarket": "1.66.42"
+    "dshmarket": "1.73.5"
   },
   "dsh": {
     "profile": {
